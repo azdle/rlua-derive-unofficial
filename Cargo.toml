@@ -1,0 +1,13 @@
+[package]
+name = "rlua-derive-unofficial"
+version = "0.1.0"
+authors = ["Patrick Barrett <patrick.barrett@smartthings.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "0.14"
+quote = "0.6"
+rlua = "0.16"
