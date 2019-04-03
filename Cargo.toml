@@ -8,6 +8,7 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
+proc-macro2 = "0.4"
 syn = "0.14"
 quote = "0.6"
 rlua = "0.16"
