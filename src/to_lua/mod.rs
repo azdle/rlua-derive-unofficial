@@ -1,8 +1,8 @@
 use crate::proc_macro::TokenStream;
-use proc_macro2::Ident;
+use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn;
-use syn::{Data, Fields, FieldsNamed, FieldsUnnamed};
+use syn::{Data, Index, Fields, FieldsNamed, FieldsUnnamed};
 
 pub fn impl_to_lua(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
@@ -55,12 +55,18 @@ fn struct_named_to_lua(fields: &FieldsNamed, name: &Ident) -> TokenStream {
 
 fn struct_unnamed_to_lua(fields: &FieldsUnnamed, name: &Ident) -> TokenStream {
     let mut fields_code = quote!{};
-    for item in fields.unnamed.iter() {
-        if let Some(ref ident) = item.ident {
-            println!("unnamed ident: {}", ident);
+
+    for (i, item) in fields.unnamed.iter().enumerate() {
+        if let None = item.ident {
+            if i > std::u32::MAX as usize {
+                panic!("structs with more than {} unnamed fields can not be supported", std::u32::MAX);
+            }
+            let idx = Index{ index: i as u32, span: Span::call_site()};
             fields_code.extend(quote!{
-                t.raw_set(stringify!(#ident), self.#ident)?;
+                t.raw_set(#idx + 1, self.#idx)?;
             });
+        } else {
+            panic!("struct with unnamed fields has named fields?");
         }
     }
 
