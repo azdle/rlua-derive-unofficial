@@ -1,0 +1,17 @@
+[package]
+name = "rlua-derive-unofficial"
+version = "0.1.0"
+authors = ["azdle <azdle@azdle.net>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "*"
+quote = "*"
+darling = "0.9"
+proc-macro2 = "*"
+
+[dev-dependencies]
+rlua = "0.16"
