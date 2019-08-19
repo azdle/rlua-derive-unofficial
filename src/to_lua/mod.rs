@@ -1,8 +1,10 @@
+use crate::attrs::*;
 use crate::proc_macro::TokenStream;
+
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn;
-use syn::{Data, Index, Fields, FieldsNamed, FieldsUnnamed};
+use syn::{Data, DataEnum, Fields, FieldsNamed, FieldsUnnamed, Index};
 
 pub fn impl_to_lua(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
@@ -16,8 +18,9 @@ pub fn impl_to_lua(ast: &syn::DeriveInput) -> TokenStream {
                 Fields::Unit => struct_unit_to_lua(name),
             }
         },
-        Data::Enum(_e) => {
-            panic!("enums not supported");
+        Data::Enum(e) => {
+            let attrs = parse_enum_container_attrs(&ast.attrs);
+            enum_to_lua(name, e, attrs)
         }
         Data::Union(_) => {
             panic!("unions not supported");
@@ -87,12 +90,63 @@ fn struct_unnamed_to_lua(fields: &FieldsUnnamed, name: &Ident) -> TokenStream {
 }
 
 fn struct_unit_to_lua(name: &Ident) -> TokenStream {
-    let gen = quote!{
+    let gen = quote! {
         #[automatically_derived]
         impl<'lua> ::rlua::ToLua<'lua> for #name {
             fn to_lua(self, lua: ::rlua::Context<'lua>) -> ::rlua::Result<::rlua::Value<'lua>> {
                 use ::rlua::Table;
                 let t = lua.create_table()?;
+                Ok(::rlua::Value::Table(t))
+            }
+        }
+    };
+    gen.into()
+}
+
+fn enum_to_lua(name: &Ident, e: &DataEnum, attrs: EnumContainerAttrs) -> TokenStream {
+    let mut match_arms = quote! {};
+
+    for v in &e.variants {
+        let ident = &v.ident;
+
+        let content_key = if let Some(content) = &attrs.content {
+            proc_macro2::Ident::new(&content, proc_macro2::Span::call_site())
+        } else {
+            ident.clone()
+        };
+
+        let set_tag = if let Some(tag) = &attrs.tag {
+            quote! {
+                t.set(#tag, stringify!(#ident).to_lowercase())?;
+            }
+        } else {
+            quote! {}
+        };
+
+        // TODO: figure out proper case-conversion for lua key names
+        match_arms.extend(quote! {
+            #name::#ident(v) => {
+                t.set(stringify!(#content_key).to_lowercase(), v)?;
+                #set_tag
+            },
+        });
+    }
+
+    let match_statement = quote! {
+                match self {
+                    #match_arms
+                }
+    };
+
+    let gen = quote! {
+        #[automatically_derived]
+        impl<'lua> ::rlua::ToLua<'lua> for #name {
+            fn to_lua(self, lua: ::rlua::Context<'lua>) -> ::rlua::Result<::rlua::Value<'lua>> {
+                use ::rlua::Table;
+                let t = lua.create_table()?;
+
+                #match_statement
+
                 Ok(::rlua::Value::Table(t))
             }
         }
