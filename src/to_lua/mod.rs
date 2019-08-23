@@ -4,7 +4,7 @@ use crate::proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn;
-use syn::{Data, DataEnum, Fields, FieldsNamed, FieldsUnnamed, Index};
+use syn::{Data, DataEnum, Fields, FieldsNamed, FieldsUnnamed, Generics, Index};
 
 pub fn impl_to_lua(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
@@ -20,7 +20,7 @@ pub fn impl_to_lua(ast: &syn::DeriveInput) -> TokenStream {
         },
         Data::Enum(e) => {
             let attrs = parse_enum_container_attrs(&ast.attrs);
-            enum_to_lua(name, e, attrs)
+            enum_to_lua(name, e, attrs, &ast.generics)
         }
         Data::Union(_) => {
             panic!("unions not supported");
@@ -103,8 +103,26 @@ fn struct_unit_to_lua(name: &Ident) -> TokenStream {
     gen.into()
 }
 
-fn enum_to_lua(name: &Ident, e: &DataEnum, attrs: EnumContainerAttrs) -> TokenStream {
+fn enum_to_lua(name: &Ident, e: &DataEnum, attrs: EnumContainerAttrs, generics: &Generics) -> TokenStream {
     let mut match_arms = quote! {};
+
+    let generic_types = {
+        let mut g = quote!{};
+        generics.type_params().for_each(|type_param| {
+            let t = &type_param.ident;
+            g.extend(quote!{#t,})
+        });
+        g
+    };
+
+    let where_generics = {
+        let mut g = quote!{where};
+        generics.type_params().for_each(|type_param| {
+            let t = &type_param.ident;
+            g.extend(quote!{#t: rlua::ToLua<'lua> + Send})
+        });
+        g
+    };
 
     for v in &e.variants {
         let ident = &v.ident;
@@ -140,7 +158,7 @@ fn enum_to_lua(name: &Ident, e: &DataEnum, attrs: EnumContainerAttrs) -> TokenSt
 
     let gen = quote! {
         #[automatically_derived]
-        impl<'lua> ::rlua::ToLua<'lua> for #name {
+        impl<'lua, #generic_types> ::rlua::ToLua<'lua> for #name<#generic_types> #where_generics {
             fn to_lua(self, lua: ::rlua::Context<'lua>) -> ::rlua::Result<::rlua::Value<'lua>> {
                 use ::rlua::Table;
                 let t = lua.create_table()?;

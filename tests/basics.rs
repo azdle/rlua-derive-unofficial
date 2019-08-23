@@ -33,6 +33,13 @@ enum TaggedContentNumOrStr {
     Str(String),
 }
 
+#[derive(Debug, Clone, PartialEq, ToLua)]
+#[rlua(tag = "type", content = "val")]
+enum GenericEnum<T> {
+    Yes(T),
+    No(T),
+}
+
 #[test]
 fn basic_unnamed() {
     use rlua::Lua;
