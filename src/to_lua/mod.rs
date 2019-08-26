@@ -104,6 +104,8 @@ fn struct_unit_to_lua(name: &Ident) -> TokenStream {
 }
 
 fn enum_to_lua(name: &Ident, e: &DataEnum, attrs: EnumContainerAttrs, generics: &Generics) -> TokenStream {
+    use inflector::Inflector; // trait & impl for changes to capitalization in strings
+
     let mut match_arms = quote! {};
 
     let generic_types = {
@@ -128,23 +130,23 @@ fn enum_to_lua(name: &Ident, e: &DataEnum, attrs: EnumContainerAttrs, generics: 
         let ident = &v.ident;
 
         let content_key = if let Some(content) = &attrs.content {
-            proc_macro2::Ident::new(&content, proc_macro2::Span::call_site())
+            content.clone()
         } else {
-            ident.clone()
+            ident.to_string().to_snake_case()
         };
 
         let set_tag = if let Some(tag) = &attrs.tag {
+            let lua_ident = ident.to_string().to_snake_case();
             quote! {
-                t.set(#tag, stringify!(#ident).to_lowercase())?;
+                t.set(#tag, #lua_ident)?;
             }
         } else {
             quote! {}
         };
 
-        // TODO: figure out proper case-conversion for lua key names
         match_arms.extend(quote! {
             #name::#ident(v) => {
-                t.set(stringify!(#content_key).to_lowercase(), v)?;
+                t.set(#content_key, v)?;
                 #set_tag
             },
         });
