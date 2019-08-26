@@ -121,7 +121,7 @@ fn enum_to_lua(name: &Ident, e: &DataEnum, attrs: EnumContainerAttrs, generics: 
         let mut g = quote!{where};
         generics.type_params().for_each(|type_param| {
             let t = &type_param.ident;
-            g.extend(quote!{#t: rlua::ToLua<'lua> + Send})
+            g.extend(quote!{#t: rlua::ToLua<'lua> + Send, })
         });
         g
     };
