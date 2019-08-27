@@ -6,12 +6,14 @@ use syn::Attribute;
 pub struct EnumContainerAttrs {
     pub tag: Option<String>,
     pub content: Option<String>,
+    pub untagged: bool,
 }
 
 pub fn parse_enum_container_attrs(attrs: &[Attribute]) -> EnumContainerAttrs {
     let mut parsed = EnumContainerAttrs {
         tag: None,
         content: None,
+        untagged: false,
     };
 
     for attr in attrs {
@@ -25,8 +27,15 @@ pub fn parse_enum_container_attrs(attrs: &[Attribute]) -> EnumContainerAttrs {
                         match meta {
                             syn::NestedMeta::Meta(meta) => {
                                 match meta {
-                                    syn::Meta::Path(_ident) => {
-                                        panic!("path unsupported");
+                                    syn::Meta::Path(path) => {
+                                        // TODO: Do I really need to build this ident (into path)?
+                                        if path
+                                            == &syn::Ident::new("untagged", Span::call_site()).into()
+                                        {
+                                            parsed.untagged = true;
+                                        } else {
+                                            panic!("unknown key")
+                                        }
                                     }
                                     syn::Meta::List(_meta_list) => {
                                         panic!("list unsupported");

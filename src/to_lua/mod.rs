@@ -144,30 +144,36 @@ fn enum_to_lua(name: &Ident, e: &DataEnum, attrs: EnumContainerAttrs, generics: 
             quote! {}
         };
 
-        match_arms.extend(quote! {
-            #name::#ident(v) => {
-                t.set(#content_key, v)?;
-                #set_tag
-            },
-        });
+        if attrs.untagged {
+            match_arms.extend(quote! {
+                #name::#ident(v) => {
+                    v.to_lua(lua)
+                },
+            });
+        } else {
+            match v.fields {
+                syn::Fields::Unnamed(_) => {
+                    match_arms.extend(quote! {
+                        #name::#ident(v) => {
+                            let t = lua.create_table()?;
+                            t.set(#content_key, v)?;
+                            #set_tag
+                            Ok(::rlua::Value::Table(t))
+                        },
+                    });
+                },
+                _ => panic!("what"),
+            }
+        }
     }
-
-    let match_statement = quote! {
-                match self {
-                    #match_arms
-                }
-    };
 
     let gen = quote! {
         #[automatically_derived]
         impl<'lua, #generic_types> ::rlua::ToLua<'lua> for #name<#generic_types> #where_generics {
             fn to_lua(self, lua: ::rlua::Context<'lua>) -> ::rlua::Result<::rlua::Value<'lua>> {
-                use ::rlua::Table;
-                let t = lua.create_table()?;
-
-                #match_statement
-
-                Ok(::rlua::Value::Table(t))
+                match self {
+                    #match_arms
+                }
             }
         }
     };
