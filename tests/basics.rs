@@ -129,6 +129,7 @@ fn tagged_content_enum_to() {
             assert(tnos.type ~= nil, "type not specified")
             assert(tnos.type == "num", "type not correct")
             assert(type(tnos) == "table", "value table not found")
+            assert(tnos.val ~= nil, "value not found")
             assert(tnos.val == 37, "value in not found")
         "#,
         )
