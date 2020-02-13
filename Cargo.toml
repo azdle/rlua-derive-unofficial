@@ -11,5 +11,5 @@ proc-macro = true
 proc-macro2 = "1"
 syn = { version = "1", features = [ "extra-traits" ] }
 quote = "1"
-rlua = "0.16"
+rlua = "0.17"
 Inflector = "0.11"
